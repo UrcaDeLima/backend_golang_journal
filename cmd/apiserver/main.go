@@ -6,7 +6,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"github.com/gopherschool/http-rest-api/internal/app/apiserver"
+	"github.com/UrcaDeLima/backend_golang_journal/internal/app/apiserver"
 )
 
 var (
@@ -26,8 +26,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	s := apiserver.New(config)
-	if err := s.Start(); err != nil {
+	if err := apiserver.Start(config); err != nil {
 		log.Fatal(err)
 	}
 }
