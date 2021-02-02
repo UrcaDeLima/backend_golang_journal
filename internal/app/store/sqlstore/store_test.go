@@ -1,19 +1,19 @@
 package sqlstore_test
 
-import (
-	"os"
-	"testing"
-)
+// import (
+// 	"os"
+// 	"testing"
+// )
 
-var (
-	databaseURL string
-)
+// var (
+// 	databaseURL string
+// )
 
-func TestMain(m *testing.M) {
-	databaseURL = os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		databaseURL = "host=localhost user=postgres password=password dbname=restapi_dev sslmode=disable"
-	}
+// func TestMain(m *testing.M) {
+// 	databaseURL = os.Getenv("DATABASE_URL")
+// 	if databaseURL == "" {
+// 		databaseURL = "host=localhost user=postgres password=password dbname=restapi_dev sslmode=disable"
+// 	}
 
-	os.Exit(m.Run())
-}
+// 	os.Exit(m.Run())
+// }

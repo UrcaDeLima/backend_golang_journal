@@ -2,6 +2,9 @@ package store
 
 // Store ...
 type Store interface {
-	User() UserRepository
 	News() NewsRepository
+	Header() HeaderRepository
+	Article() ArticleRepository
+	Post() PostRepository
+	InnerDescription() InnerDescriptionRepository
 }

@@ -12,14 +12,14 @@ CREATE TABLE users (
 
 CREATE TABLE image (
   image_id SERIAL PRIMARY KEY,
-  desktop varchar(100) DEFAULT NULL,
-  mobile varchar(100) DEFAULT NULL
+  desktop varchar(255) DEFAULT NULL,
+  mobile varchar(255) DEFAULT NULL
 );
  
 CREATE TABLE news (
   news_id SERIAL PRIMARY KEY,
-  title varchar(100),
-  img varchar(100),
+  title varchar(255),
+  img varchar(255),
   date timestamp NOT NULL DEFAULT NOW(),
   views INTEGER DEFAULT 0,
   created_at timestamp NOT NULL DEFAULT NOW()
@@ -27,7 +27,7 @@ CREATE TABLE news (
 
 CREATE TABLE innerDescription (
   innerDescription_id SERIAL PRIMARY KEY,
-  innerAdvertising varchar(100)
+  innerAdvertising varchar(255)
 );
 
 CREATE TABLE post (
@@ -38,19 +38,19 @@ CREATE TABLE post (
 
 CREATE TABLE header (
   header_id SERIAL PRIMARY KEY,
-  title varchar(100),
+  title varchar(255),
   image_id INTEGER,
   date timestamp NOT NULL DEFAULT NOW(),
   views int DEFAULT 0,
-  shortDescription varchar(100),
+  shortDescription varchar(255),
   post_id INTEGER REFERENCES post (post_id) ON DELETE CASCADE,
   created_at timestamp NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE article (
   article_id SERIAL PRIMARY KEY,
-  title varchar(100),
-  backgroundImg varchar(100),
+  title varchar(255),
+  backgroundImg varchar(255),
   paragraphs text[],
   text text,
   post_id INTEGER REFERENCES post (post_id) ON DELETE CASCADE,
@@ -69,14 +69,14 @@ CREATE TABLE article_product (
 
 CREATE TABLE recommendation (
   recommendation_id SERIAL PRIMARY KEY,
-  title varchar(100),
+  title varchar(255),
   article_id INTEGER REFERENCES article (article_id) ON DELETE CASCADE,
   text text
 );
 
 CREATE TABLE interaction (
   interaction_id SERIAL PRIMARY KEY,
-  title varchar(100),
+  title varchar(255),
   article_id INTEGER REFERENCES article (article_id) ON DELETE CASCADE,
   items text[]
 );

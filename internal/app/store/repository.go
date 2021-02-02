@@ -2,13 +2,27 @@ package store
 
 import "github.com/UrcaDeLima/backend_golang_journal/internal/app/model"
 
-// UserRepository ...
-type UserRepository interface {
-	Create(*model.User) error
-	FindByEmail(string) (*model.User, error)
-}
-
 // NewsRepository ...
 type NewsRepository interface {
 	CreateNews(*model.News) error
+	GetNewsByID(id int) (*model.News, error)
+	GetAllNews() ([]*model.News, error)
+}
+
+// HeaderRepository ...
+type HeaderRepository interface {
+}
+
+// ArticleRepository ...
+type ArticleRepository interface {
+}
+
+// InnerDescriptionRepository ...
+type InnerDescriptionRepository interface {
+}
+
+// PostRepository ...
+type PostRepository interface {
+	GetPostByID(id int) (*model.Post, *model.Header, *model.Article, *model.InnerDescription, error)
+	GetAllPosts() ([]*model.Post, []*model.Header, []*model.Article, []*model.InnerDescription, error)
 }
