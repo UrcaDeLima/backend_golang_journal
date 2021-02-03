@@ -14,6 +14,7 @@ type Store struct {
 	articleRepository          *ArticleRepository
 	postRepository             *PostRepository
 	innerDescriptionRepository *InnerDescriptionRepository
+	imageRepository            *ImageRepository
 }
 
 // New ...
@@ -86,4 +87,17 @@ func (s *Store) InnerDescription() store.InnerDescriptionRepository {
 	}
 
 	return s.innerDescriptionRepository
+}
+
+// Image ...
+func (s *Store) Image() store.ImageRepository {
+	if s.imageRepository != nil {
+		return s.imageRepository
+	}
+
+	s.imageRepository = &ImageRepository{
+		store: s,
+	}
+
+	return s.imageRepository
 }

@@ -7,4 +7,5 @@ type Store interface {
 	Article() ArticleRepository
 	Post() PostRepository
 	InnerDescription() InnerDescriptionRepository
+	Image() ImageRepository
 }

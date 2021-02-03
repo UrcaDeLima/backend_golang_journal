@@ -1,2 +1,3 @@
 /apiserver
 /.env
+/image/*

@@ -2,7 +2,10 @@ package sqlstore
 
 import (
 	"database/sql"
+	"image"
+	"image/jpeg"
 	"log"
+	"os"
 
 	"github.com/UrcaDeLima/backend_golang_journal/internal/app/model"
 	"github.com/UrcaDeLima/backend_golang_journal/internal/app/store"
@@ -28,9 +31,35 @@ type InnerDescriptionRepository struct {
 	store *Store
 }
 
+// ImageRepository ...
+type ImageRepository struct {
+	store *Store
+}
+
 // PostRepository ...
 type PostRepository struct {
 	store *Store
+}
+
+// SetPicture ...
+func (r *PostRepository) SetPicture(img image.Image) {
+	// Somewhere in the same package
+	f, err := os.Create("outimage.jpg")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	// Specify the quality, between 0-100
+	// Higher is better
+	opt := jpeg.Options{
+		Quality: 90,
+	}
+	err = jpeg.Encode(f, img, &opt)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return
 }
 
 // GetPostByID ...

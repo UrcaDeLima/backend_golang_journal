@@ -1,6 +1,10 @@
 package store
 
-import "github.com/UrcaDeLima/backend_golang_journal/internal/app/model"
+import (
+	"image"
+
+	"github.com/UrcaDeLima/backend_golang_journal/internal/app/model"
+)
 
 // NewsRepository ...
 type NewsRepository interface {
@@ -21,8 +25,13 @@ type ArticleRepository interface {
 type InnerDescriptionRepository interface {
 }
 
+// ImageRepository ...
+type ImageRepository interface {
+}
+
 // PostRepository ...
 type PostRepository interface {
 	GetPostByID(id int) (*model.PostModel, error)
 	GetAllPosts() ([]*model.PostModel, error)
+	SetPicture(img image.Image)
 }
