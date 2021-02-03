@@ -4,29 +4,20 @@ import (
 	"flag"
 	"log"
 
-	"github.com/BurntSushi/toml"
+	"github.com/joho/godotenv"
 
 	"github.com/UrcaDeLima/backend_golang_journal/internal/app/apiserver"
 )
 
-var (
-	configPath string
-)
-
-func init() {
-	flag.StringVar(&configPath, "config-path", "configs/apiserver.toml", "path to config file")
-}
-
 func main() {
 	flag.Parse()
 
-	config := apiserver.NewConfig()
-	_, err := toml.DecodeFile(configPath, config)
+	err := godotenv.Load()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error loading .env file")
 	}
 
-	if err := apiserver.Start(config); err != nil {
+	if err := apiserver.Start(); err != nil {
 		log.Fatal(err)
 	}
 }

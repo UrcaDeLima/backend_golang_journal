@@ -23,6 +23,6 @@ type InnerDescriptionRepository interface {
 
 // PostRepository ...
 type PostRepository interface {
-	GetPostByID(id int) (*model.Post, *model.Header, *model.Article, *model.InnerDescription, error)
-	GetAllPosts() ([]*model.Post, []*model.Header, []*model.Article, []*model.InnerDescription, error)
+	GetPostByID(id int) (*model.PostModel, error)
+	GetAllPosts() ([]*model.PostModel, error)
 }
