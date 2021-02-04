@@ -1,15 +1,3 @@
-CREATE TABLE users (
-  id bigserial not null primary key,
-  email varchar not null unique,
-  encrypted_password varchar not null
-);
-
-
-
-
-
-
-
 CREATE TABLE image (
   image_id SERIAL PRIMARY KEY,
   desktop varchar(255) DEFAULT NULL,

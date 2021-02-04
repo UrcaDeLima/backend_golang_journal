@@ -3,6 +3,6 @@ package model
 // Image ...
 type Image struct {
 	Image_id int    `json:"image_id"`
-	Descktop string `json:"descktop"`
+	Desktop  string `json:"desktop"`
 	Mobile   string `json:"mobile"`
 }

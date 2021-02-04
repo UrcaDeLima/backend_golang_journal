@@ -1,7 +1,7 @@
 package store
 
 import (
-	"image"
+	"mime/multipart"
 
 	"github.com/UrcaDeLima/backend_golang_journal/internal/app/model"
 )
@@ -27,11 +27,12 @@ type InnerDescriptionRepository interface {
 
 // ImageRepository ...
 type ImageRepository interface {
+	SetPicture(m *multipart.Reader) error
+	UpdatePicture(id int, m *multipart.Reader) error
 }
 
 // PostRepository ...
 type PostRepository interface {
 	GetPostByID(id int) (*model.PostModel, error)
 	GetAllPosts() ([]*model.PostModel, error)
-	SetPicture(img image.Image)
 }

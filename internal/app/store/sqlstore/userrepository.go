@@ -2,9 +2,11 @@ package sqlstore
 
 import (
 	"database/sql"
-	"image"
+	"fmt"
 	"image/jpeg"
+	"io"
 	"log"
+	"mime/multipart"
 	"os"
 
 	"github.com/UrcaDeLima/backend_golang_journal/internal/app/model"
@@ -41,25 +43,108 @@ type PostRepository struct {
 	store *Store
 }
 
-// SetPicture ...
-func (r *PostRepository) SetPicture(img image.Image) {
-	// Somewhere in the same package
-	f, err := os.Create("outimage.jpg")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f.Close()
+// UpdatePicture ...
+func (r *ImageRepository) UpdatePicture(id int, m *multipart.Reader) error {
+	image := *&model.Image{}
 
-	// Specify the quality, between 0-100
-	// Higher is better
-	opt := jpeg.Options{
-		Quality: 90,
+	for {
+		part, err := m.NextPart()
+		if err == io.EOF {
+			break
+		}
+
+		if part.FileName() == "" {
+			continue
+		}
+
+		dst, err := os.Create("./image/" + part.FileName())
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		if part.FormName() == "desktop" {
+			image.Desktop = "backend_golang_journal/image/" + part.FileName()
+		} else if part.FormName() == "mobile" {
+			image.Mobile = "backend_golang_journal/image/" + part.FileName()
+		}
+		image, err := jpeg.DecodeConfig(part)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s: %v\n", "backend_golang_journal/image/"+part.FileName(), err)
+		}
+		log.Println(image)
+
+		io.Copy(dst, part)
 	}
-	err = jpeg.Encode(f, img, &opt)
-	if err != nil {
-		log.Fatal(err)
+	return r.store.db.QueryRow(
+		"UPDATE image SET (desktop, mobile) VALUES ($1, $2) WHERE image_id = $3",
+		image.Desktop,
+		image.Mobile,
+		id,
+	).Scan(&image.Image_id)
+}
+
+// SetPicture ...
+func (r *ImageRepository) SetPicture(m *multipart.Reader) error {
+	image := *&model.Image{}
+
+	for {
+		part, err := m.NextPart()
+		if err == io.EOF {
+			break
+		}
+
+		if part.FileName() == "" {
+			continue
+		}
+
+		// creating pictures
+		dst, err := os.Create("./image/" + part.FileName())
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		// part query for sql
+		if part.FormName() == "desktop" {
+			image.Desktop = "image/" + part.FileName()
+		} else if part.FormName() == "mobile" {
+			image.Mobile = "image/" + part.FileName()
+		}
+
+		io.Copy(dst, part)
+
+		///////////////////// to get a size
+		// image, err := jpeg.DecodeConfig(part)
+		// if err != nil {
+		// 	fmt.Fprintf(os.Stderr, "%s: %v\n", "image/"+part.FileName(), err)
+		// }
+		// log.Println(image)
+
+		/////////////////// to change a size
+		// // load original image
+		// img, err := imaging.Open("image/" + part.FileName())
+		// if err != nil {
+		// 	fmt.Println(err)
+		// 	os.Exit(1)
+		// }
+
+		// dstimg := imaging.Resize(img, 1920, 0, imaging.Box)
+
+		// // save resized image
+		// err = imaging.Save(dstimg, "image/"+part.FileName())
+
+		// if err != nil {
+		// 	fmt.Println(err)
+		// 	os.Exit(1)
+		// }
+
+		// // everything ok
+		// fmt.Println("Image resized")
 	}
-	return
+	return r.store.db.QueryRow(
+		"INSERT INTO image (desktop, mobile) VALUES ($1, $2) RETURNING image_id",
+		image.Desktop,
+		image.Mobile,
+	).Scan(&image.Image_id)
 }
 
 // GetPostByID ...
