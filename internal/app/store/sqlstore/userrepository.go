@@ -3,7 +3,6 @@ package sqlstore
 import (
 	"database/sql"
 	"fmt"
-	"image/jpeg"
 	"io"
 	"log"
 	"mime/multipart"
@@ -45,7 +44,7 @@ type PostRepository struct {
 
 // UpdatePicture ...
 func (r *ImageRepository) UpdatePicture(id int, m *multipart.Reader) error {
-	image := *&model.Image{}
+	image := model.Image{}
 
 	for {
 		part, err := m.NextPart()
@@ -63,20 +62,22 @@ func (r *ImageRepository) UpdatePicture(id int, m *multipart.Reader) error {
 		}
 
 		if part.FormName() == "desktop" {
-			image.Desktop = "backend_golang_journal/image/" + part.FileName()
+			image.Desktop = "image/" + part.FileName()
 		} else if part.FormName() == "mobile" {
-			image.Mobile = "backend_golang_journal/image/" + part.FileName()
+			image.Mobile = "image/" + part.FileName()
 		}
-		image, err := jpeg.DecodeConfig(part)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: %v\n", "backend_golang_journal/image/"+part.FileName(), err)
-		}
-		log.Println(image)
+
+		// image, err := jpeg.DecodeConfig(part)
+		// if err != nil {
+		// 	fmt.Fprintf(os.Stderr, "%s: %v\n", "backend_golang_journal/image/"+part.FileName(), err)
+		// }
+		// log.Println(image)
 
 		io.Copy(dst, part)
 	}
+	log.Println(image)
 	return r.store.db.QueryRow(
-		"UPDATE image SET (desktop, mobile) VALUES ($1, $2) WHERE image_id = $3",
+		"UPDATE image SET desktop = $1, mobile = $2 WHERE image_id = $3 RETURNING image_id",
 		image.Desktop,
 		image.Mobile,
 		id,
@@ -152,7 +153,7 @@ func (r *PostRepository) GetPostByID(id int) (*model.PostModel, error) {
 	postModel := &model.PostModel{}
 
 	if err := r.store.db.QueryRow(
-		"SELECT post.post_id, innerDescription.innerAdvertising, post.created_at, article.Title, article.backgroundImg, article.paragraphs, article.text, header.Title, header.image_id, header.date, header.views, header.shortDescription FROM post JOIN innerDescription ON post.innerAdvertising_id = innerDescription.innerDescription_id LEFT JOIN article ON post.post_id = article.post_id LEFT JOIN header ON post.post_id = header.post_id where post.post_id = $1",
+		"SELECT post.post_id, innerDescription.innerAdvertising, post.created_at, article.Title, article.backgroundImg, article.paragraphs, article.text, header.Title, header.image_id, header.date, header.views, header.shortDescription, image.desktop, image.mobile FROM post JOIN innerDescription ON post.innerAdvertising_id = innerDescription.innerDescription_id LEFT JOIN article ON post.post_id = article.post_id LEFT JOIN header ON post.post_id = header.post_id LEFT JOIN image ON post.post_id = image.image_id where post.post_id = $1 ORDER BY post.created_at DESC",
 		id,
 	).Scan(
 		&postModel.P.Post_id,
@@ -167,6 +168,8 @@ func (r *PostRepository) GetPostByID(id int) (*model.PostModel, error) {
 		&postModel.H.Date,
 		&postModel.H.Views,
 		&postModel.H.ShortDescription,
+		&postModel.Im.Desktop,
+		&postModel.Im.Mobile,
 	); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, store.ErrRecordNotFound
@@ -181,7 +184,7 @@ func (r *PostRepository) GetPostByID(id int) (*model.PostModel, error) {
 func (r *PostRepository) GetAllPosts() ([]*model.PostModel, error) {
 	allPostModel := []*model.PostModel{}
 
-	rows, err := r.store.db.Query("SELECT post.post_id, innerDescription.innerAdvertising, post.created_at, article.Title, article.backgroundImg, article.paragraphs, article.text, header.Title, header.image_id, header.date, header.views, header.shortDescription FROM post JOIN innerDescription ON post.innerAdvertising_id = innerDescription.innerDescription_id LEFT JOIN article ON post.post_id = article.post_id LEFT JOIN header ON post.post_id = header.post_id ORDER BY created_at DESC")
+	rows, err := r.store.db.Query("SELECT post.post_id, innerDescription.innerAdvertising, post.created_at, article.Title, article.backgroundImg, article.paragraphs, article.text, header.Title, header.image_id, header.date, header.views, header.shortDescription, image.desktop, image.mobile FROM post JOIN innerDescription ON post.innerAdvertising_id = innerDescription.innerDescription_id LEFT JOIN article ON post.post_id = article.post_id LEFT JOIN header ON post.post_id = header.post_id LEFT JOIN image ON post.post_id = image.image_id ORDER BY post.created_at DESC")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -203,6 +206,8 @@ func (r *PostRepository) GetAllPosts() ([]*model.PostModel, error) {
 			&postModel.H.Date,
 			&postModel.H.Views,
 			&postModel.H.ShortDescription,
+			&postModel.Im.Desktop,
+			&postModel.Im.Mobile,
 		); err != nil {
 			log.Fatal(err)
 		}
@@ -255,7 +260,7 @@ func (r *NewsRepository) GetNewsByID(id int) (*model.News, error) {
 func (r *NewsRepository) GetAllNews() ([]*model.News, error) {
 	allNews := []*model.News{}
 
-	rows, err := r.store.db.Query("SELECT News_id, Title, Img, Date, Views, Created_at FROM news ORDER BY created_at DESC LIMIT 10")
+	rows, err := r.store.db.Query("SELECT News_id, Title, Img, Date, Views, Created_at FROM news ORDER BY news.created_at DESC LIMIT 10")
 	if err != nil {
 		log.Fatal(err)
 	}
