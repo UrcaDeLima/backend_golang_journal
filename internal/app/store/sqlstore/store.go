@@ -15,6 +15,8 @@ type Store struct {
 	postRepository             *PostRepository
 	innerDescriptionRepository *InnerDescriptionRepository
 	imageRepository            *ImageRepository
+	recommendationRepository   *RecommendationRepository
+	interactionRepository      *InteractionRepository
 }
 
 // New ...
@@ -100,4 +102,30 @@ func (s *Store) Image() store.ImageRepository {
 	}
 
 	return s.imageRepository
+}
+
+// Interaction ...
+func (s *Store) Interaction() store.InteractionRepository {
+	if s.interactionRepository != nil {
+		return s.interactionRepository
+	}
+
+	s.interactionRepository = &InteractionRepository{
+		store: s,
+	}
+
+	return s.interactionRepository
+}
+
+// Recommendation ...
+func (s *Store) Recommendation() store.RecommendationRepository {
+	if s.recommendationRepository != nil {
+		return s.recommendationRepository
+	}
+
+	s.recommendationRepository = &RecommendationRepository{
+		store: s,
+	}
+
+	return s.recommendationRepository
 }

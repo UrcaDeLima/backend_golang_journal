@@ -7,4 +7,6 @@ type PostModel struct {
 	A  Article
 	I  InnerDescription
 	Im Image
+	R  Recommendation
+	In Interaction
 }

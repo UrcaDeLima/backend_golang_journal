@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"database/sql"
 	"fmt"
+	"image/jpeg"
 	"io"
 	"log"
 	"mime/multipart"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/UrcaDeLima/backend_golang_journal/internal/app/model"
 	"github.com/UrcaDeLima/backend_golang_journal/internal/app/store"
+	"github.com/disintegration/imaging"
 )
 
 // NewsRepository ...
@@ -37,14 +39,78 @@ type ImageRepository struct {
 	store *Store
 }
 
+// InteractionRepository ...
+type InteractionRepository struct {
+	store *Store
+}
+
+// RecommendationRepository ...
+type RecommendationRepository struct {
+	store *Store
+}
+
 // PostRepository ...
 type PostRepository struct {
 	store *Store
 }
 
+// createFile ...
+func createFile(part *multipart.Part, image *model.Image) *model.Image {
+	dst, err := os.Create("./image/" + part.FileName())
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	if part.FormName() == "desktop" {
+		image.Desktop = "image/" + part.FileName()
+	} else if part.FormName() == "mobile" {
+		image.Mobile = "image/" + part.FileName()
+	}
+
+	io.Copy(dst, part)
+
+	file, err := os.Open("image/" + part.FileName())
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer file.Close()
+
+	fileSize, err := jpeg.DecodeConfig(file)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %v\n", "image/"+part.FileName(), err)
+	}
+
+	if fileSize.Width > 1920 {
+		// load original image
+		img, err := imaging.Open("image/" + part.FileName())
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		dstimg := imaging.Resize(img, 1920, 0, imaging.Box)
+
+		// save resized image
+		err = imaging.Save(dstimg, "image/"+part.FileName())
+
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	}
+
+	return image
+}
+
 // UpdatePicture ...
 func (r *ImageRepository) UpdatePicture(id int, m *multipart.Reader) error {
-	image := model.Image{}
+	image := &model.Image{}
+	r.store.db.QueryRow(
+		"SELECT Desktop, Mobile FROM image WHERE image_id = $1",
+		id,
+	).Scan(&image.Desktop, &image.Mobile)
+
+	var directory string
 
 	for {
 		part, err := m.NextPart()
@@ -56,26 +122,19 @@ func (r *ImageRepository) UpdatePicture(id int, m *multipart.Reader) error {
 			continue
 		}
 
-		dst, err := os.Create("./image/" + part.FileName())
+		if part.FormName() == "desktop" {
+			directory = image.Desktop
+		} else if part.FormName() == "mobile" {
+			directory = image.Mobile
+		}
+
+		err = os.Remove(directory)
 		if err != nil {
 			fmt.Println(err)
 		}
 
-		if part.FormName() == "desktop" {
-			image.Desktop = "image/" + part.FileName()
-		} else if part.FormName() == "mobile" {
-			image.Mobile = "image/" + part.FileName()
-		}
-
-		// image, err := jpeg.DecodeConfig(part)
-		// if err != nil {
-		// 	fmt.Fprintf(os.Stderr, "%s: %v\n", "backend_golang_journal/image/"+part.FileName(), err)
-		// }
-		// log.Println(image)
-
-		io.Copy(dst, part)
+		image = createFile(part, image)
 	}
-	log.Println(image)
 	return r.store.db.QueryRow(
 		"UPDATE image SET desktop = $1, mobile = $2 WHERE image_id = $3 RETURNING image_id",
 		image.Desktop,
@@ -86,60 +145,20 @@ func (r *ImageRepository) UpdatePicture(id int, m *multipart.Reader) error {
 
 // SetPicture ...
 func (r *ImageRepository) SetPicture(m *multipart.Reader) error {
-	image := *&model.Image{}
+	image := &model.Image{}
 
 	for {
 		part, err := m.NextPart()
 		if err == io.EOF {
 			break
 		}
+		log.Println(part)
 
 		if part.FileName() == "" {
 			continue
 		}
 
-		// creating pictures
-		dst, err := os.Create("./image/" + part.FileName())
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		// part query for sql
-		if part.FormName() == "desktop" {
-			image.Desktop = "image/" + part.FileName()
-		} else if part.FormName() == "mobile" {
-			image.Mobile = "image/" + part.FileName()
-		}
-
-		io.Copy(dst, part)
-
-		///////////////////// to get a size
-		// image, err := jpeg.DecodeConfig(part)
-		// if err != nil {
-		// 	fmt.Fprintf(os.Stderr, "%s: %v\n", "image/"+part.FileName(), err)
-		// }
-		// log.Println(image)
-
-		/////////////////// to change a size
-		// // load original image
-		// img, err := imaging.Open("image/" + part.FileName())
-		// if err != nil {
-		// 	fmt.Println(err)
-		// 	os.Exit(1)
-		// }
-
-		// dstimg := imaging.Resize(img, 1920, 0, imaging.Box)
-
-		// // save resized image
-		// err = imaging.Save(dstimg, "image/"+part.FileName())
-
-		// if err != nil {
-		// 	fmt.Println(err)
-		// 	os.Exit(1)
-		// }
-
-		// // everything ok
-		// fmt.Println("Image resized")
+		image = createFile(part, image)
 	}
 	return r.store.db.QueryRow(
 		"INSERT INTO image (desktop, mobile) VALUES ($1, $2) RETURNING image_id",
@@ -190,6 +209,7 @@ func (r *PostRepository) GetAllPosts() ([]*model.PostModel, error) {
 	}
 	defer rows.Close() // спросить насчёт закрытия соединения
 
+	log.Println(rows)
 	for rows.Next() {
 		postModel := &model.PostModel{}
 
@@ -211,14 +231,309 @@ func (r *PostRepository) GetAllPosts() ([]*model.PostModel, error) {
 		); err != nil {
 			log.Fatal(err)
 		}
+		log.Println(postModel)
 		allPostModel = append(allPostModel, postModel)
 	}
 	if err := rows.Err(); err != nil {
+		log.Println(allPostModel)
 		log.Fatal(err)
 	}
 
 	return allPostModel, err
 }
+
+func handleError(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func dbQueryCreatePost(postModel *model.PostModel) {
+	db, err := sql.Open(os.Getenv("DB_DIALECT"), os.Getenv("DB_URL"))
+	handleError(err)
+	tx, err := db.Begin()
+	handleError(err)
+	defer db.Close()
+	var post_id int
+
+	if err := tx.QueryRow(
+		"INSERT INTO innerDescription (innerAdvertising) VALUES ($1) RETURNING innerDescription_id",
+		&postModel.I.InnerAdvertising,
+	).Scan(
+		&post_id,
+	); err != nil {
+		tx.Rollback()
+		log.Fatal(err)
+		return
+	}
+
+	//log.Println(post_id)
+	if err := tx.QueryRow(
+		"INSERT INTO post (innerAdvertising_id) VALUES ($1) RETURNING post_id",
+		post_id,
+	).Scan(
+		&post_id,
+	); err != nil {
+		tx.Rollback()
+		log.Fatal(err)
+		return
+	}
+	//log.Println(post_id)
+
+	var imageID int
+	if err := tx.QueryRow(
+		"INSERT INTO image (desktop, mobile) VALUES ($1, $2) RETURNING image_id",
+		&postModel.Im.Desktop,
+		&postModel.Im.Mobile,
+	).Scan(
+		&imageID,
+	); err != nil {
+		tx.Rollback()
+		log.Fatal(err)
+		return
+	}
+	log.Println(postModel.H.Title)
+	log.Println(postModel.H.Views)
+	log.Println(postModel.H.ShortDescription)
+	log.Println(imageID)
+
+	// if err := tx.QueryRow(
+	// 	"INSERT INTO header (title, image_id, views, shortDescription) VALUES ($1, $2, $3, $4) RETURNING header_id", // понять что не так с запросом
+	// 	postModel.H.Title,
+	// 	imageID,
+	// 	postModel.H.Views,
+	// 	postModel.H.ShortDescription,
+	// ).Scan(
+	// 	&post_id,
+	// ); err != nil {
+	// 	log.Println("here")
+	// 	tx.Rollback()
+	// 	log.Fatal(err)
+	// }
+
+	if err := tx.QueryRow(
+		"INSERT INTO header (title, image_id, views, shortDescription) VALUES ('test', 2, 3, 'test') RETURNING header_id", // понять что не так с запросом
+	).Scan(
+		&post_id,
+	); err != nil {
+		log.Println("qwqwqw")
+		tx.Rollback()
+		log.Fatal(err)
+	}
+
+	log.Println(111111111)
+	log.Println(imageID)
+
+	var articleID int
+	if err := tx.QueryRow(
+		"INSERT INTO article (title, BackgroundImg, Paragraphs, Text, Post_id) VALUES ($1, $2, $3, $4, 19) RETURNING article_id",
+		&postModel.A.Title,
+		imageID,
+		&postModel.A.Paragraphs,
+		&postModel.A.Text,
+	).Scan(
+		&articleID,
+	); err != nil {
+		tx.Rollback()
+		log.Fatal(err)
+		return
+	}
+	log.Println(articleID)
+
+	if err := tx.QueryRow(
+		"INSERT INTO article_image (Article_id, image_id) VALUES ($1, $2)",
+		articleID,
+		imageID,
+	); err != nil {
+		tx.Rollback()
+		log.Fatal(err)
+		return
+	}
+	log.Println(articleID)
+
+	if err := tx.QueryRow(
+		"INSERT INTO article_product (Article_id, product_id) VALUES ($1, 11)", // поставить динамический id
+		articleID,
+	); err != nil {
+		tx.Rollback()
+		log.Fatal(err)
+		return
+	}
+	log.Println(articleID)
+
+	if err := tx.QueryRow(
+		"INSERT INTO recomendation (title, Article_id, Text) VALUES ($1, $2, $3)",
+		&postModel.R.Title,
+		articleID,
+		&postModel.R.Text,
+	); err != nil {
+		tx.Rollback()
+		log.Fatal(err)
+		return
+	}
+	log.Println(articleID)
+
+	if err := tx.QueryRow(
+		"INSERT INTO interaction (title, Article_id, Items) VALUES ($1, $2, $3)",
+		&postModel.In.Title,
+		articleID,
+		&postModel.In.Items,
+	); err != nil {
+		tx.Rollback()
+		log.Fatal(err)
+		return
+	}
+	log.Println(articleID)
+
+	log.Println("all okey")
+
+	tx.Commit()
+}
+
+// CreatePost ...
+func (r *PostRepository) CreatePost(m *multipart.Reader) {
+	postModel := &model.PostModel{}
+	image := &model.Image{}
+	//text := make([]byte, 512)
+	//number := make([]byte, 512)
+
+	for {
+		part, err := m.NextPart()
+		if err == io.EOF {
+			break
+		}
+
+		//log.Println(part)
+		if part.FileName() == "" {
+			switch part.FormName() {
+			case "headerShortDescription", "innerDescriptionInnerAdvertising", "interactionTitle", "recommendationTitle", "headerTitle", "articleTitle", "articleParagraphs", "articleText", "recommendationText", "interactionItems":
+				{
+					text := make([]byte, 512)
+					_, err = part.Read(text)
+					if err != nil && err != io.EOF {
+						fmt.Println(err)
+						return
+					}
+					log.Println(string(text))
+					log.Print("\n")
+
+					switch part.FormName() {
+					case "headerShortDescription":
+						{
+							postModel.H.ShortDescription = string(text)
+						}
+					case "innerAdvertising":
+						{
+							postModel.I.InnerAdvertising = string(text)
+						}
+					case "interactionTitle":
+						{
+							postModel.In.Title = string(text)
+						}
+					case "recommendationTitle":
+						{
+							postModel.R.Title = string(text)
+						}
+					case "headerTitle":
+						{
+							postModel.H.Title = string(text)
+						}
+					case "articleTitle":
+						{
+							postModel.A.Title = string(text)
+						}
+					case "articleParagraphs":
+						{
+
+							//log.Println(string(text))
+							//log.Print("\n")
+							postModel.A.Paragraphs = append(postModel.A.Paragraphs, string(text))
+						}
+					case "articleText":
+						{
+							postModel.A.Text = string(text)
+						}
+					case "recommendationText":
+						{
+							postModel.R.Text = string(text)
+						}
+					case "interactionItems":
+						{
+							//log.Println(string(text))
+							//log.Print("\n")
+							postModel.In.Items = string(text)
+						}
+					}
+				}
+			case "headerViews":
+				{
+					// _, err = part.Read(number)
+					// if err != nil && err != io.EOF {
+					// 	fmt.Println(err)
+					// 	return
+					// }
+					// views, _ := strconv.Atoi(string(text))
+					// postModel.H.Views = int(views) // сделать парсинг в int, сейчас не работает
+					//log.Println(text)
+				}
+			default:
+				{
+					log.Println("Error " + part.FormName())
+				}
+			}
+
+			//log.Println(postModel)
+			//continue
+		} else {
+			image = createFile(part, image)
+			postModel.Im = *image
+		}
+	}
+	dbQueryCreatePost(postModel)
+}
+
+// // CreatePost ...
+// func (r *PostRepository) CreatePost(post *model.Post) error {
+// 	var db *sql.DB
+
+// 	return r.store.db.QueryRow(
+// 		"INSERT INTO post (innerAdvertising_id) VALUES ($1) RETURNING post_id",
+// 		post.InnerAdvertising_id,
+// 	).Scan(&post.Post_id)
+// }
+
+// // CreateInnerDescription ...
+// func (r *InnerDescriptionRepository) CreateInnerDescription(innerDescription *model.InnerDescription) error {
+// 	return r.store.db.QueryRow(
+// 		"INSERT INTO innerDescription (innerAdvertising) VALUES ($1) RETURNING innerDescription_id",
+// 		innerDescription.InnerAdvertising,
+// 	).Scan(&innerDescription.InnerDescription_id)
+// }
+
+// // CreateHeader ...
+// func (r *HeaderRepository) CreateHeader(header *model.Header) error {
+// 	return r.store.db.QueryRow(
+// 		"INSERT INTO header (title, image_id, date, views, shortDescription, post_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING Header_id",
+// 		header.Title,
+// 		header.Image_id,
+// 		header.Date,
+// 		header.Views,
+// 		header.ShortDescription,
+// 		header.Post_id,
+// 	).Scan(&header.Header_id)
+// }
+
+// // CreateArticle ...
+// func (r *ArticleRepository) CreateArticle(article *model.Article) error {
+// 	return r.store.db.QueryRow(
+// 		"INSERT INTO header (title, backgroundImg, text, views, post_id) VALUES ($1, $2, $3, $4, $5) RETURNING article_id",
+// 		article.Title,
+// 		article.BackgroundImg,
+// 		article.Paragraphs,
+// 		article.Text,
+// 		article.Post_id,
+// 	).Scan(&article.Article_id)
+// }
 
 // CreateNews ...
 func (r *NewsRepository) CreateNews(news *model.News) error {

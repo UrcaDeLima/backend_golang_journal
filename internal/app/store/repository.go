@@ -25,6 +25,14 @@ type ArticleRepository interface {
 type InnerDescriptionRepository interface {
 }
 
+// InteractionRepository ...
+type InteractionRepository interface {
+}
+
+// RecommendationRepository ...
+type RecommendationRepository interface {
+}
+
 // ImageRepository ...
 type ImageRepository interface {
 	SetPicture(m *multipart.Reader) error
@@ -35,4 +43,5 @@ type ImageRepository interface {
 type PostRepository interface {
 	GetPostByID(id int) (*model.PostModel, error)
 	GetAllPosts() ([]*model.PostModel, error)
+	CreatePost(m *multipart.Reader)
 }

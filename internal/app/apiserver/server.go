@@ -3,6 +3,7 @@ package apiserver
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -33,6 +34,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) configureRouter() {
 	s.router.HandleFunc("/setNews", s.handleCreateNews()).Methods("POST")
+	s.router.HandleFunc("/createPost", s.handleCreatePost()).Methods("POST")
 	s.router.HandleFunc("/setPicture", s.handleSetPicture()).Methods("POST")
 	s.router.HandleFunc("/updatePicture/{id}", s.handleUpdatePicture()).Methods("POST")
 	s.router.HandleFunc("/getNewsById/{id}", s.handleGetNewsByID()).Methods("GET")
@@ -83,7 +85,7 @@ func (s *server) handleSetPicture() http.HandlerFunc {
 func (s *server) handleGetAllPosts() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		postModel := []*model.PostModel{}
-
+		log.Println(111)
 		postModel, err := s.store.Post().GetAllPosts()
 		if err != nil {
 			s.error(w, r, http.StatusInternalServerError, err)
@@ -183,6 +185,21 @@ func (s *server) handleCreateNews() http.HandlerFunc {
 		}
 
 		s.respond(w, r, http.StatusCreated, n)
+	}
+}
+
+func (s *server) handleCreatePost() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			http.Error(w, http.StatusText(405), 405)
+			return
+		}
+
+		m, err := r.MultipartReader()
+		if err != nil {
+			fmt.Println(err)
+		}
+		s.store.Post().CreatePost(m)
 	}
 }
 

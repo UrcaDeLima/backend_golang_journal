@@ -8,4 +8,6 @@ type Store interface {
 	Post() PostRepository
 	InnerDescription() InnerDescriptionRepository
 	Image() ImageRepository
+	Recommendation() RecommendationRepository
+	Interaction() InteractionRepository
 }
